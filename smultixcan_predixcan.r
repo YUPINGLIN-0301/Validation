@@ -69,7 +69,7 @@ addition <- as_mapper(~ {
 for (i in c("gene","smultixcan")) {
     if (i == "gene") {
         x <- vapply(c(target_1, target_2), function(x) {
-            paste0("/home/nick/yuping/", x, "/gene/", x, "genes.out")
+            paste0("/home/nick/yuping/", x, "/gene/", x, ".genes.out")
         }, character(1), USE.NAMES = FALSE)
 
         x <- flatten_chr(replicate(3, x, simplify = FALSE))
