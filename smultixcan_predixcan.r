@@ -30,18 +30,16 @@ gene_function <- function(x, y) {
     colnames(x) <- gsub("GENE", "ID", colnames(x))
     x <- left_join(x, scz.gene.david, by = "ID")
     x <- cbind(x[, 1:10], apply(x[, 11:31], 2, function(x) ifelse(is.na(x), 0, x)))
-
+    
     y <- get(load(y))
     qvalue <- p.adjust(x$P, method = "fdr", n = length(x$P))
-    target_variable <- transform(x,qvalue = qvalue,FDRtheoretical = y$FDR)
+    target_variable <- transform(x, qvalue = qvalue, FDRtheoretical = y$FDR)
     return(target_variable)
 }
 
-hrthrthrthrt
-
-
-as_mapper(~{
-    
+addition <- as_mapper(~ {
+    param_forjoin <- ..2
+    param_foroutput <- ..3
     a <- lapply(1:9, function(y) {
         switch(y, subset(..1[[1]], qvalue < 0.05),
             subset(..1[[2]], FDRtheoretical < 0.05),
@@ -54,39 +52,24 @@ as_mapper(~{
             subset(..1[[6]], qvalue < 0.05)
         )
     })
-    
     c <- map2_dbl(
         list(a[[1]], a[[1]], a[[4]], a[[4]], a[[7]], a[[7]]),
         list(a[[3]], a[[2]], a[[6]], a[[5]], a[[9]], a[[8]]),
-        ~ inner_join(.x, .y, by = ..2) %>% nrow()
+        ~ inner_join(.x, .y, by = param_forjoin) %>% nrow()
     )
-})
-
-    
-
-    
     result1 <- matrix(c(c[1], c[2], (c[2] / c[1]), nrow(a[[1]]), (tidy(prop.test(c(c[2], c[1]), c(nrow(a[[1]]), nrow(a[[1]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
     result2 <- matrix(c(c[3], c[4], (c[4] / c[3]), nrow(a[[1]]), (tidy(prop.test(c(c[4], c[3]), c(nrow(a[[4]]), nrow(a[[4]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
     result3 <- matrix(c(c[5], c[6], (c[6] / c[5]), nrow(a[[1]]), (tidy(prop.test(c(c[6], c[5]), c(nrow(a[[7]]), nrow(a[[7]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
     
     result <- data.frame(rbind(result1, result2, result3))
-    write.csv(result, file = "/home/nick/yuping/validation/asd_smultixcanvalidation.csv", quote = F)
+    write.csv(result, file = paste0("/home/nick/yuping/validation/asd_", param_foroutput,
+    "validation.csv"), quote = F)
+})
 
-
-
-
-
-
-
-
-
-
-
-
-for (i in c("smultixcan")) {
+for (i in c("gene","smultixcan")) {
     if (i == "gene") {
         x <- vapply(c(target_1, target_2), function(x) {
-            paste0("/home/nick/yuping/", x, "/gene/", x, ".allbrain.txt")
+            paste0("/home/nick/yuping/", x, "/gene/", x, "genes.out")
         }, character(1), USE.NAMES = FALSE)
 
         x <- flatten_chr(replicate(3, x, simplify = FALSE))
@@ -94,9 +77,8 @@ for (i in c("smultixcan")) {
             two_name <- c(paste0("/home/nick/yuping/", target_1, "/gene/FDRreg/", x), paste0("/home/nick/yuping/", target_2, "/gene/FDRreg/", x))
             return(list(two_name))
         }))
-        
         b <- map2(x, y, gene_function)
-
+        addition(b, "ID", "gene")
     } else {
         x <- vapply(c(target_1, target_2), function(x) {
             paste0("/home/nick/yuping/", x, "/smultixcan/", x, ".allbrain.txt")
@@ -108,9 +90,6 @@ for (i in c("smultixcan")) {
             return(list(two_name))
         }))
         b <- map2(x, y, smultxican_function)
+        addition(b, "ENSEMBL_GENE_ID", "smultxican")
     }
-
-
-
-
 }
