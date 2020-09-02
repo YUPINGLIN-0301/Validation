@@ -37,24 +37,33 @@ gene_function <- function(x, y) {
     return(target_variable)
 }
 
+hrthrthrthrt
+
+
+as_mapper(~{
+    
     a <- lapply(1:9, function(y) {
-        switch(y, subset(b[[1]], qvalue < 0.05),
-            subset(b[[2]], FDRtheoretical < 0.05),
-            subset(b[[2]], qvalue < 0.05),
-            subset(b[[3]], qvalue < 0.05),
-            subset(b[[4]], FDRtheoretical < 0.05),
-            subset(b[[4]], qvalue < 0.05),
-            subset(b[[5]], qvalue < 0.05),
-            subset(b[[6]], FDRtheoretical < 0.05),
-            subset(b[[6]], qvalue < 0.05)
+        switch(y, subset(..1[[1]], qvalue < 0.05),
+            subset(..1[[2]], FDRtheoretical < 0.05),
+            subset(..1[[2]], qvalue < 0.05),
+            subset(..1[[3]], qvalue < 0.05),
+            subset(..1[[4]], FDRtheoretical < 0.05),
+            subset(..1[[4]], qvalue < 0.05),
+            subset(..1[[5]], qvalue < 0.05),
+            subset(..1[[6]], FDRtheoretical < 0.05),
+            subset(..1[[6]], qvalue < 0.05)
         )
     })
     
     c <- map2_dbl(
         list(a[[1]], a[[1]], a[[4]], a[[4]], a[[7]], a[[7]]),
         list(a[[3]], a[[2]], a[[6]], a[[5]], a[[9]], a[[8]]),
-        ~ inner_join(.x, .y, by = "ENSEMBL_GENE_ID") %>% nrow()
+        ~ inner_join(.x, .y, by = ..2) %>% nrow()
     )
+})
+
+    
+
     
     result1 <- matrix(c(c[1], c[2], (c[2] / c[1]), nrow(a[[1]]), (tidy(prop.test(c(c[2], c[1]), c(nrow(a[[1]]), nrow(a[[1]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
     result2 <- matrix(c(c[3], c[4], (c[4] / c[3]), nrow(a[[1]]), (tidy(prop.test(c(c[4], c[3]), c(nrow(a[[4]]), nrow(a[[4]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
