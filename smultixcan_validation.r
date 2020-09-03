@@ -6,8 +6,8 @@ library(tidyverse)
 library(stringr)
 library(broom)
 
-target_1 <- "asd2019"
-target_2 <- "asd2015.pgc"
+target_1 <- "adhd2019"
+target_2 <- "adhd2016"
 
 brain <- c(
     "Brain_Amygdala",
@@ -115,7 +115,7 @@ for (j in c("gene", "smultixcan","predixcan")) {
 
         b <- map2(x, y, gene_function)
         result <- reduce(addition(b, "ID", "gene"), rbind)
-        write.csv(result, file = paste0("/home/nick/yuping/validation/asd_gene_valiation.csv"), quote = F)
+        write.csv(result, file = paste0("/home/nick/yuping/validation/adhd_gene_valiation.csv"), quote = F)
         rm(result)
     } else if (j == "smultixcan") {
         x <- vapply(c(target_1, target_2), function(x) {
@@ -130,9 +130,9 @@ for (j in c("gene", "smultixcan","predixcan")) {
 
         b <- map2(x, y, smultxican_function)
         result <- reduce(addition(b, "ENSEMBL_GENE_ID", "smultxican"), rbind)
-        write.csv(result, file = paste0("/home/nick/yuping/validation/asd_smultixcan_valiation.csv"), quote = F)
+        write.csv(result, file = paste0("/home/nick/yuping/validation/adhd_smultixcan_valiation.csv"), quote = F)
         rm(result)
-    } else if(j == "predixcan"){
+    } else if(j == "predixcan") {
       for (i in brain) {
           x <- vapply(c(target_1, target_2), function(x) {
               paste0("/home/nick/yuping/", x, "/predixcan/gtex_v7_", str_to_lower(x), "_for_", i, ".csv")
@@ -152,6 +152,6 @@ for (j in c("gene", "smultixcan","predixcan")) {
               final <- result
           }
         }
-        write.csv(final, file = "/home/nick/yuping/validation/asd_predixcanvalidation.csv", quote = F)
+        write.csv(final, file = "/home/nick/yuping/validation/adhd_predixcanvalidation.csv", quote = F)
     }
 }
