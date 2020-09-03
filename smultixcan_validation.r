@@ -53,6 +53,22 @@ gene_function <- function(x, y) {
     return(target_variable)
 }
 
+predixcan_function <- function(x, y) {
+    x <- fread(x)
+    x <- x[complete.cases(x$pvalue), ]
+    scz.gene.david <- fread(file = "/home/nick/magma-library-uniq-ensembl.csv")
+    x$gene <- str_extract(x$gene, pattern = "[A-Z0-9]+")
+    colnames(x) <- gsub("gene", "ENSEMBL_GENE_ID", colnames(x[1]))
+    x <- left_join(x, scz.gene.david, by = "ENSEMBL_GENE_ID")
+    x <- cbind(x[, 1:12], apply(x[, 13:33], 2, function(x) ifelse(is.na(x), 0, x)))
+
+    y <- get(load(y))
+    qvalue <- p.adjust(x$pvalue, method = "fdr", n = length(x$pvalue))
+    target_variable <- transform(x, qvalue = qvalue, FDRtheoretical = y$FDR)
+
+    return(target_variable)
+}
+
 addition <- as_mapper(~ {
     param_forjoin <- ..2
     param_foroutput <- ..3
@@ -73,17 +89,20 @@ addition <- as_mapper(~ {
         list(a[[3]], a[[2]], a[[6]], a[[5]], a[[9]], a[[8]]),
         ~ inner_join(.x, .y, by = param_forjoin) %>% nrow()
     )
-    result1 <- matrix(c(c[1], c[2], (c[2] / c[1]), nrow(a[[1]]), (tidy(prop.test(c(c[2], c[1]), c(nrow(a[[1]]), nrow(a[[1]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
-    result2 <- matrix(c(c[3], c[4], (c[4] / c[3]), nrow(a[[1]]), (tidy(prop.test(c(c[4], c[3]), c(nrow(a[[4]]), nrow(a[[4]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
-    result3 <- matrix(c(c[5], c[6], (c[6] / c[5]), nrow(a[[1]]), (tidy(prop.test(c(c[6], c[5]), c(nrow(a[[7]]), nrow(a[[7]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
-    
-    result <- data.frame(rbind(result1, result2, result3))
-    write.csv(result, file = paste0("/home/nick/yuping/validation/asd_", param_foroutput,
-    "validation.csv"), quote = F)
+    if (nrow(a[[1]]) == 0) {
+        result1 <- matrix(c(c[1], c[2], (c[2] / c[1]), nrow(a[[1]]), NA), ncol = 5, byrow = F)
+        result2 <- matrix(c(c[3], c[4], (c[4] / c[3]), nrow(a[[1]]), NA), ncol = 5, byrow = F)
+        result3 <- matrix(c(c[5], c[6], (c[6] / c[5]), nrow(a[[1]]), NA), ncol = 5, byrow = F)
+    } else {
+        result1 <- matrix(c(c[1], c[2], (c[2] / c[1]), nrow(a[[1]]), (tidy(prop.test(c(c[2], c[1]), c(nrow(a[[1]]), nrow(a[[1]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
+        result2 <- matrix(c(c[3], c[4], (c[4] / c[3]), nrow(a[[1]]), (tidy(prop.test(c(c[4], c[3]), c(nrow(a[[4]]), nrow(a[[4]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
+        result3 <- matrix(c(c[5], c[6], (c[6] / c[5]), nrow(a[[1]]), (tidy(prop.test(c(c[6], c[5]), c(nrow(a[[7]]), nrow(a[[7]])), alternative = "greater"))$p.value)), ncol = 5, byrow = F)
+    }
+    return(list(result1, result2, result3))
 })
 
-for (i in c("gene","smultixcan")) {
-    if (i == "gene") {
+for (j in c("gene", "smultixcan","predixcan")) {
+    if (j == "gene") {
         x <- vapply(c(target_1, target_2), function(x) {
             paste0("/home/nick/yuping/", x, "/gene/", x, ".genes.out")
         }, character(1), USE.NAMES = FALSE)
@@ -93,9 +112,12 @@ for (i in c("gene","smultixcan")) {
             two_name <- c(paste0("/home/nick/yuping/", target_1, "/gene/FDRreg/", x), paste0("/home/nick/yuping/", target_2, "/gene/FDRreg/", x))
             return(list(two_name))
         }))
+
         b <- map2(x, y, gene_function)
-        addition(b, "ID", "gene")
-    } else {
+        result <- reduce(addition(b, "ID", "gene"), rbind)
+        write.csv(result, file = paste0("/home/nick/yuping/validation/asd_gene_valiation.csv"), quote = F)
+        rm(result)
+    } else if (j == "smultixcan") {
         x <- vapply(c(target_1, target_2), function(x) {
             paste0("/home/nick/yuping/", x, "/smultixcan/", x, ".allbrain.txt")
         }, character(1), USE.NAMES = FALSE)
@@ -105,29 +127,31 @@ for (i in c("gene","smultixcan")) {
             two_name <- c(paste0("/home/nick/yuping/", target_1, "/smultixcan/FDRreg/", x), paste0("/home/nick/yuping/", target_2, "/smultixcan/FDRreg/", x))
             return(list(two_name))
         }))
+
         b <- map2(x, y, smultxican_function)
-        addition(b, "ENSEMBL_GENE_ID", "smultxican")
-    } else {
- 
-
-
-
-
-
-
-   
-   
-   
-   
-   
-   
-   
-   
-   
-    
-    
-    
+        result <- reduce(addition(b, "ENSEMBL_GENE_ID", "smultxican"), rbind)
+        write.csv(result, file = paste0("/home/nick/yuping/validation/asd_smultixcan_valiation.csv"), quote = F)
+        rm(result)
+    } else if(j == "predixcan"){
+      for (i in brain) {
+          x <- vapply(c(target_1, target_2), function(x) {
+              paste0("/home/nick/yuping/", x, "/predixcan/gtex_v7_", str_to_lower(x), "_for_", i, ".csv")
+          }, character(1), USE.NAMES = FALSE)
+      
+          x <- flatten_chr(replicate(3, x, simplify = FALSE))
+          y <- flatten_chr(sapply(c("Nolasso-theore.Rdata", "BioNolasso-theore.Rdata", "BioLasso-theore.Rdata"), function(x) {
+              two_name <- c(paste0("/home/nick/yuping/", target_1, "/predixcan/FDRreg/", i, x), paste0("/home/nick/yuping/", target_2, "/predixcan/FDRreg/", i, x))
+              return(list(two_name))
+          }))
+          
+          b <- map2(x, y, predixcan_function)
+          result <- reduce(addition(b, "ENSEMBL_GENE_ID", "predixcan"), rbind)
+          if (exists("final")) {
+              final <- rbind(final, result)
+          } else {
+              final <- result
+          }
+        }
+        write.csv(final, file = "/home/nick/yuping/validation/asd_predixcanvalidation.csv", quote = F)
     }
-
-
 }
